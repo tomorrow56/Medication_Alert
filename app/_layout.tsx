@@ -41,8 +41,12 @@ export default function RootLayout() {
     initManusRuntime();
   }, []);
 
-  // 通知の初期設定
+  // 通知の初期設定（Webではスキップ）
   useEffect(() => {
+    if (Platform.OS === "web") {
+      return;
+    }
+
     const initializeNotifications = async () => {
       // 通知ハンドラーを設定
       setupNotificationHandler();

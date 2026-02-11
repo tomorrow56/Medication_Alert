@@ -54,6 +54,22 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 }
 
 /**
+ * 次の服薬時刻を計算
+ */
+function getNextMedicationTime(hour: number, minute: number): Date {
+  const now = new Date();
+  const next = new Date();
+  next.setHours(hour, minute, 0, 0);
+
+  // もし今日の時刻が過ぎていたら、明日にする
+  if (next <= now) {
+    next.setDate(next.getDate() + 1);
+  }
+
+  return next;
+}
+
+/**
  * 服薬時刻の通知をスケジュール
  */
 export async function scheduleMedicationNotification(
@@ -64,6 +80,8 @@ export async function scheduleMedicationNotification(
       return null;
     }
 
+    const triggerDate = getNextMedicationTime(time.hour, time.minute);
+
     const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
         title: "服薬の時間です",
@@ -72,11 +90,10 @@ export async function scheduleMedicationNotification(
         data: { timeId: time.id, type: "medication" },
       },
       trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour: time.hour,
         minute: time.minute,
-        repeats: true,
-      },
+      } as any,
     });
 
     return notificationId;
@@ -106,6 +123,8 @@ export async function scheduleReminderNotifications(
       const triggerHour = (time.hour + Math.floor((time.minute + delayMinutes) / 60)) % 24;
       const triggerMinute = (time.minute + delayMinutes) % 60;
 
+      const triggerDate = getNextMedicationTime(triggerHour, triggerMinute);
+
       const notificationId = await Notifications.scheduleNotificationAsync({
         content: {
           title: "⚠️ 服薬の確認",
@@ -114,11 +133,10 @@ export async function scheduleReminderNotifications(
           data: { timeId: time.id, type: "reminder" },
         },
         trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
           hour: triggerHour,
           minute: triggerMinute,
-          repeats: true,
-        },
+        } as any,
       });
 
       notificationIds.push(notificationId);
