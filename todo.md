@@ -45,3 +45,10 @@
 - [x] Androidでのカレンダートリガーエラーを修正
 - [x] 日時ベースのトリガーに変更
 - [x] Expo Go SDK 53の通知警告を抑制
+
+## Development Build
+
+- [x] EAS Buildの設定
+- [x] expo-dev-clientのインストール
+- [x] ビルド手順書の作成
+- [x] READMEの作成
