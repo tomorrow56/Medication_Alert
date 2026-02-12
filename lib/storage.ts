@@ -97,6 +97,20 @@ export async function getMedicationRecordsByDateRange(
 }
 
 /**
+ * 服薬記録を削除
+ */
+export async function deleteMedicationRecord(recordId: string): Promise<void> {
+  try {
+    const records = await getMedicationRecords();
+    const filteredRecords = records.filter((r) => r.id !== recordId);
+    await AsyncStorage.setItem(STORAGE_KEYS.MEDICATION_RECORDS, JSON.stringify(filteredRecords));
+  } catch (error) {
+    console.error("Failed to delete medication record:", error);
+    throw error;
+  }
+}
+
+/**
  * 全データをクリア（開発用）
  */
 export async function clearAllData(): Promise<void> {

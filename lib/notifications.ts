@@ -82,12 +82,34 @@ export async function scheduleMedicationNotification(
 
     const triggerDate = getNextMedicationTime(time.hour, time.minute);
 
+    // Androidの場合、通知カテゴリーを設定
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationCategoryAsync("medication", [
+        {
+          identifier: "snooze_5",
+          buttonTitle: "5分後",
+          options: { opensAppToForeground: false },
+        },
+        {
+          identifier: "snooze_10",
+          buttonTitle: "10分後",
+          options: { opensAppToForeground: false },
+        },
+        {
+          identifier: "snooze_15",
+          buttonTitle: "15分後",
+          options: { opensAppToForeground: false },
+        },
+      ]);
+    }
+
     const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
         title: "服薬の時間です",
         body: `${time.label || "服薬"}の時間です。お薬を飲んでください。`,
         sound: "default",
         data: { timeId: time.id, type: "medication" },
+        categoryIdentifier: "medication",
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -168,6 +190,39 @@ export async function cancelNotification(notificationId: string): Promise<void> 
     await Notifications.cancelScheduledNotificationAsync(notificationId);
   } catch (error) {
     console.error("Failed to cancel notification:", error);
+  }
+}
+
+/**
+ * スヌーズ通知をスケジュール
+ */
+export async function scheduleSnoozeNotification(
+  timeId: string,
+  label: string,
+  delayMinutes: number
+): Promise<string | null> {
+  try {
+    const triggerTime = new Date();
+    triggerTime.setMinutes(triggerTime.getMinutes() + delayMinutes);
+
+    const notificationId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "服薬の時間です",
+        body: `${label || "服薬"}の時間です。お薬を飲んでください。`,
+        sound: "default",
+        data: { timeId, type: "snooze" },
+        categoryIdentifier: "medication",
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: triggerTime,
+      } as any,
+    });
+
+    return notificationId;
+  } catch (error) {
+    console.error("Failed to schedule snooze notification:", error);
+    return null;
   }
 }
 

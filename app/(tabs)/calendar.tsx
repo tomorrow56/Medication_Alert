@@ -3,7 +3,7 @@ import { ScrollView, Text, View, Pressable } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import type { MedicationTime, MedicationRecord } from "@/lib/types";
-import { getMedicationTimes, getMedicationRecordsByDateRange } from "@/lib/storage";
+import { getMedicationTimes, getMedicationRecordsByDateRange, deleteMedicationRecord } from "@/lib/storage";
 import {
   formatDate,
   getDaysInMonth,
@@ -66,6 +66,12 @@ export default function CalendarScreen() {
     const completed = dayRecords.filter((r) => r.takenAt !== null).length;
     const total = medicationTimes.length;
     return { completed, total };
+  };
+
+  // 服薬記録を削除
+  const handleDeleteRecord = async (recordId: string) => {
+    await deleteMedicationRecord(recordId);
+    await loadData();
   };
 
   // カレンダーの日付配列を生成
@@ -210,24 +216,38 @@ export default function CalendarScreen() {
                 if (!time) return null;
 
                 return (
-                  <View key={record.id} className="flex-row items-center justify-between py-2">
-                    <View>
-                      <Text className="text-base font-semibold text-foreground">
-                        {formatTime(time.hour, time.minute)}
-                      </Text>
-                      {time.label && <Text className="text-sm text-muted">{time.label}</Text>}
-                    </View>
-                    <View className="items-end">
-                      <Text className="text-sm text-success font-semibold">✓ 完了</Text>
-                      {record.takenAt && (
-                        <Text className="text-xs text-muted">
-                          {new Date(record.takenAt).toLocaleTimeString("ja-JP", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                  <View key={record.id} className="bg-background rounded-xl p-4 gap-3">
+                    <View className="flex-row items-center justify-between">
+                      <View>
+                        <Text className="text-base font-semibold text-foreground">
+                          {formatTime(time.hour, time.minute)}
                         </Text>
-                      )}
+                        {time.label && <Text className="text-sm text-muted">{time.label}</Text>}
+                      </View>
+                      <View className="items-end">
+                        <Text className="text-sm text-success font-semibold">✓ 完了</Text>
+                        {record.takenAt && (
+                          <Text className="text-xs text-muted">
+                            {new Date(record.takenAt).toLocaleTimeString("ja-JP", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </Text>
+                        )}
+                      </View>
                     </View>
+                    <Pressable
+                      onPress={() => handleDeleteRecord(record.id)}
+                      style={({ pressed }) => [
+                        {
+                          backgroundColor: colors.error,
+                          opacity: pressed ? 0.7 : 1,
+                        },
+                      ]}
+                      className="rounded-lg py-2 items-center"
+                    >
+                      <Text className="text-white text-xs font-semibold">記録を削除</Text>
+                    </Pressable>
                   </View>
                 );
               })}

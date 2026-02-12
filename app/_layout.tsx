@@ -18,9 +18,10 @@ import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
 
 import { trpc, createTRPCClient } from "@/lib/trpc";
 import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
-import { setupNotificationHandler, requestNotificationPermissions } from "@/lib/notifications";
+import { setupNotificationHandler, requestNotificationPermissions, scheduleSnoozeNotification } from "@/lib/notifications";
 import { getMedicationTimes } from "@/lib/storage";
 import { rescheduleAllNotifications } from "@/lib/notifications";
+import * as Notifications from "expo-notifications";
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -59,6 +60,42 @@ export default function RootLayout() {
         const times = await getMedicationTimes();
         await rescheduleAllNotifications(times);
       }
+
+      // 通知レスポンスハンドラー（スヌーズ機能）
+      const subscription = Notifications.addNotificationResponseReceivedListener(
+        async (response) => {
+          const { actionIdentifier, notification } = response;
+          const { timeId, type } = notification.request.content.data as {
+            timeId: string;
+            type: string;
+          };
+
+          // スヌーズアクションの処理
+          if (actionIdentifier === "snooze_5") {
+            const times = await getMedicationTimes();
+            const time = times.find((t) => t.id === timeId);
+            if (time) {
+              await scheduleSnoozeNotification(timeId, time.label || "服薬", 5);
+            }
+          } else if (actionIdentifier === "snooze_10") {
+            const times = await getMedicationTimes();
+            const time = times.find((t) => t.id === timeId);
+            if (time) {
+              await scheduleSnoozeNotification(timeId, time.label || "服薬", 10);
+            }
+          } else if (actionIdentifier === "snooze_15") {
+            const times = await getMedicationTimes();
+            const time = times.find((t) => t.id === timeId);
+            if (time) {
+              await scheduleSnoozeNotification(timeId, time.label || "服薬", 15);
+            }
+          }
+        }
+      );
+
+      return () => {
+        subscription.remove();
+      };
     };
 
     initializeNotifications();

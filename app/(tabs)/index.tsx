@@ -4,7 +4,7 @@ import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import type { MedicationTime, MedicationRecord } from "@/lib/types";
-import { getMedicationTimes, getMedicationRecordsByDate, saveMedicationRecord } from "@/lib/storage";
+import { getMedicationTimes, getMedicationRecordsByDate, saveMedicationRecord, deleteMedicationRecord } from "@/lib/storage";
 import { formatTime, getTodayString, isTimePassed, getMinutesUntil } from "@/lib/date-utils";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 
@@ -59,6 +59,15 @@ export default function HomeScreen() {
     };
 
     await saveMedicationRecord(newRecord);
+    await loadData();
+  };
+
+  // 服薬記録を削除
+  const handleDeleteRecord = async (timeId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const today = getTodayString();
+    const recordId = `${today}-${timeId}`;
+    await deleteMedicationRecord(recordId);
     await loadData();
   };
 
@@ -175,16 +184,30 @@ export default function HomeScreen() {
                   )}
 
                   {taken && todayRecords.find((r) => r.timeId === time.id)?.takenAt && (
-                    <View className="items-center mt-2">
-                      <Text className="text-xs text-muted">
-                        服薬時刻:{" "}
-                        {new Date(
-                          todayRecords.find((r) => r.timeId === time.id)!.takenAt!
-                        ).toLocaleTimeString("ja-JP", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </Text>
+                    <View className="gap-2 mt-2">
+                      <View className="items-center">
+                        <Text className="text-xs text-muted">
+                          服薬時刻:{" "}
+                          {new Date(
+                            todayRecords.find((r) => r.timeId === time.id)!.takenAt!
+                          ).toLocaleTimeString("ja-JP", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </Text>
+                      </View>
+                      <Pressable
+                        onPress={() => handleDeleteRecord(time.id)}
+                        style={({ pressed }) => [
+                          {
+                            backgroundColor: colors.error,
+                            opacity: pressed ? 0.7 : 1,
+                          },
+                        ]}
+                        className="rounded-lg py-2 items-center"
+                      >
+                        <Text className="text-white text-xs font-semibold">記録を削除</Text>
+                      </Pressable>
                     </View>
                   )}
                 </View>
