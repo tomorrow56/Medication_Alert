@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { ScrollView, Text, View, Pressable } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import type { MedicationTime, MedicationRecord } from "@/lib/types";
@@ -37,6 +39,13 @@ export default function CalendarScreen() {
   useEffect(() => {
     loadData();
   }, [selectedYear, selectedMonth]);
+
+  // タブがフォーカスされたときにデータを再読み込み
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [selectedYear, selectedMonth])
+  );
 
   // 前月へ
   const goToPreviousMonth = () => {
