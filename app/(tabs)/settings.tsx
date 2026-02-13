@@ -175,43 +175,68 @@ export default function SettingsScreen() {
                 mode="time"
                 is24Hour={true}
                 display={Platform.OS === "ios" ? "spinner" : "default"}
-                onChange={(_event: any, selectedDate?: Date) => {
-                  if (selectedDate) {
-                    setTempTime(selectedDate);
+                onChange={async (_event: any, selectedDate?: Date) => {
+                  if (Platform.OS === "android") {
+                    // Androidでは選択後に自動的に保存
+                    if (selectedDate && editingTimeId) {
+                      const updatedTimes = medicationTimes.map((t) =>
+                        t.id === editingTimeId
+                          ? { ...t, hour: selectedDate.getHours(), minute: selectedDate.getMinutes() }
+                          : t
+                      );
+                      setMedicationTimes(updatedTimes);
+                      await saveMedicationTimes(updatedTimes);
+                      await rescheduleAllNotifications(updatedTimes);
+                      setEditingTimeId(null);
+                      setShowPicker(false);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    } else {
+                      // キャンセルされた場合
+                      setEditingTimeId(null);
+                      setShowPicker(false);
+                    }
+                  } else {
+                    // iOSでは一時的に保存するだけ
+                    if (selectedDate) {
+                      setTempTime(selectedDate);
+                    }
                   }
                 }}
                 textColor={colors.foreground}
               />
             </View>
 
-            <View className="flex-row gap-3">
-              <Pressable
-                onPress={cancelEditing}
-                style={({ pressed }) => [
-                  {
-                    backgroundColor: colors.surface,
-                    opacity: pressed ? 0.7 : 1,
-                  },
-                ]}
-                className="flex-1 rounded-xl py-3 items-center border border-border"
-              >
-                <Text className="text-foreground font-semibold">キャンセル</Text>
-              </Pressable>
+            {/* iOSの場合のみボタンを表示 */}
+            {Platform.OS === "ios" && (
+              <View className="flex-row gap-3">
+                <Pressable
+                  onPress={cancelEditing}
+                  style={({ pressed }) => [
+                    {
+                      backgroundColor: colors.surface,
+                      opacity: pressed ? 0.7 : 1,
+                    },
+                  ]}
+                  className="flex-1 rounded-xl py-3 items-center border border-border"
+                >
+                  <Text className="text-foreground font-semibold">キャンセル</Text>
+                </Pressable>
 
-              <Pressable
-                onPress={saveTime}
-                style={({ pressed }) => [
-                  {
-                    backgroundColor: colors.primary,
-                    opacity: pressed ? 0.8 : 1,
-                    transform: [{ scale: pressed ? 0.97 : 1 }],
-                  },
-                ]}
-                className="flex-1 rounded-xl py-3 items-center"
-              >
-                <Text className="text-white font-semibold">保存</Text>
-              </Pressable>
-            </View>
+                <Pressable
+                  onPress={saveTime}
+                  style={({ pressed }) => [
+                    {
+                      backgroundColor: colors.primary,
+                      opacity: pressed ? 0.8 : 1,
+                      transform: [{ scale: pressed ? 0.97 : 1 }],
+                    },
+                  ]}
+                  className="flex-1 rounded-xl py-3 items-center"
+                >
+                  <Text className="text-white font-semibold">保存</Text>
+                </Pressable>
+              </View>
+            )}
           </View>
         </View>
       )}
