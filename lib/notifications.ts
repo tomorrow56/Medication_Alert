@@ -139,13 +139,14 @@ export async function scheduleReminderNotifications(
 
     const notificationIds: string[] = [];
 
-    // 1時間後、1時間30分後、2時間後、2時間30分後、3時間後の5回分をスケジュール
+    // 1時間後、1時間３０分後、2時間後、2時間３０分後、3時間後の5回分をスケジュール
     for (let i = 1; i <= 5; i++) {
       const delayMinutes = 60 + (i - 1) * 30; // 60, 90, 120, 150, 180分後
-      const triggerHour = (time.hour + Math.floor((time.minute + delayMinutes) / 60)) % 24;
-      const triggerMinute = (time.minute + delayMinutes) % 60;
-
-      const triggerDate = getNextMedicationTime(triggerHour, triggerMinute);
+      
+      // 正しい時刻計算
+      const totalMinutes = time.hour * 60 + time.minute + delayMinutes;
+      const triggerHour = Math.floor(totalMinutes / 60) % 24;
+      const triggerMinute = totalMinutes % 60;
 
       const notificationId = await Notifications.scheduleNotificationAsync({
         content: {
