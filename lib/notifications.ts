@@ -9,16 +9,48 @@ import type { MedicationTime } from "./types";
 /**
  * 通知ハンドラーを設定
  * アプリがフォアグラウンドにある場合でも通知を表示
+ * 既に服薬記録がある場合は通知を表示しない
  */
 export function setupNotificationHandler(): void {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
+    handleNotification: async (notification) => {
+      // 通知データからtimeIdとtypeを取得
+      const { timeId, type } = notification.request.content.data as {
+        timeId?: string;
+        type?: string;
+      };
+
+      // reminderタイプの通知の場合、服薬記録を確認
+      if (type === "reminder" && timeId) {
+        const { getMedicationRecords } = await import("./storage");
+        const { formatDate } = await import("./date-utils");
+        
+        const today = formatDate(new Date());
+        const records = await getMedicationRecords();
+        const todayRecords = records.filter((r) => r.date === today);
+        
+        // 該当するtimeIdの記録が既にある場合は通知を表示しない
+        const hasRecord = todayRecords.some((r) => r.timeId === timeId);
+        if (hasRecord) {
+          return {
+            shouldShowAlert: false,
+            shouldPlaySound: false,
+            shouldSetBadge: false,
+            shouldShowBanner: false,
+            shouldShowList: false,
+          };
+        }
+      }
+
+      // それ以外の場合は通常通り表示
+      return {
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      };
+    },
   });
 }
 
