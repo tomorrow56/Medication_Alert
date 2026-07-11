@@ -1,6 +1,13 @@
 # 服薬管理アプリ
 
-毎日の服薬を簡単に記録・管理できるモバイルアプリです。
+毎日の服薬を簡単に記録・管理できるアプリです。
+スマートフォン向けモバイルアプリと、ブラウザで使えるWebアプリの両方を提供します。
+
+## Webアプリ
+
+GitHub Pages でホストしているWebアプリをブラウザからすぐに使えます。
+
+**URL**: https://tomorrow56.github.io/Medication_Alert/
 
 ## 主な機能
 
@@ -13,13 +20,49 @@
 
 ## 技術スタック
 
+### モバイルアプリ (React Native)
+
 - **フレームワーク**: React Native (Expo SDK 54)
 - **UI**: NativeWind 4 (Tailwind CSS)
 - **通知**: expo-notifications
 - **ストレージ**: AsyncStorage
 - **言語**: TypeScript
 
-## 開発環境のセットアップ
+### Webアプリ
+
+- **フレームワーク**: React 18 + Vite
+- **UI**: TailwindCSS
+- **ストレージ**: localStorage
+- **通知**: Web Notifications API
+- **ホスティング**: GitHub Pages
+
+## プロジェクト構造
+
+```
+Medication_Alert/
+├── app/                    # モバイルアプリ画面 (Expo Router)
+│   ├── (tabs)/            # タブナビゲーション
+│   │   ├── index.tsx      # ホーム画面
+│   │   ├── calendar.tsx   # カレンダー画面
+│   │   └── settings.tsx   # 設定画面
+│   └── _layout.tsx        # ルートレイアウト
+├── components/            # 再利用可能なコンポーネント
+├── lib/                   # ユーティリティとロジック
+│   ├── types.ts          # 型定義
+│   ├── storage.ts        # データ永続化
+│   ├── notifications.ts  # 通知管理
+│   └── date-utils.ts     # 日付ユーティリティ
+├── assets/               # 画像とフォント
+├── web/                  # Webアプリソース (Vite + React)
+│   └── src/
+│       ├── App.tsx
+│       └── screens/      # ホーム・カレンダー・設定画面
+├── docs/                 # Webアプリビルド成果物 (GitHub Pages)
+├── app.config.ts         # Expo設定
+└── eas.json              # EAS Build設定
+```
+
+## モバイルアプリ セットアップ
 
 ```bash
 # 依存関係をインストール
@@ -37,25 +80,12 @@ pnpm dev
 
 詳細は [BUILD_INSTRUCTIONS.md](./BUILD_INSTRUCTIONS.md) を参照してください。
 
-## プロジェクト構造
+## Webアプリ ローカル開発
 
-```
-medication-reminder/
-├── app/                    # アプリケーション画面
-│   ├── (tabs)/            # タブナビゲーション
-│   │   ├── index.tsx      # ホーム画面
-│   │   ├── calendar.tsx   # カレンダー画面
-│   │   └── settings.tsx   # 設定画面
-│   └── _layout.tsx        # ルートレイアウト
-├── components/            # 再利用可能なコンポーネント
-├── lib/                   # ユーティリティとロジック
-│   ├── types.ts          # 型定義
-│   ├── storage.ts        # データ永続化
-│   ├── notifications.ts  # 通知管理
-│   └── date-utils.ts     # 日付ユーティリティ
-├── assets/               # 画像とフォント
-├── eas.json             # EAS Build設定
-└── app.config.ts        # Expo設定
+```bash
+cd web
+npm install
+npm run dev
 ```
 
 ## 使い方
@@ -67,7 +97,7 @@ medication-reminder/
 
 ## ライセンス
 
-このプロジェクトはMITライセンスの下で公開されています。
+このプロジェクトは [MIT License](./LICENSE) の下で公開されています。
 
 ## サポート
 
