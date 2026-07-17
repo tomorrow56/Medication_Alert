@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, Clock } from 'lucide-react';
-import { loadSettings, loadMonthRecords, loadDailyRecord } from '../storage';
-import type { DailyRecord } from '../types';
+import { loadSettings, loadMonthRecords, loadDailyRecord, saveDailyRecord } from '../storage';
+import type { DailyRecord, MedicationStatus, MedicationTime } from '../types';
 
 function daysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate();
@@ -23,16 +23,65 @@ function getRate(record: DailyRecord, totalEnabled: number): RateInfo {
   return { taken, total: totalEnabled };
 }
 
+function statusBadgeClass(status: MedicationStatus) {
+  switch (status) {
+    case 'taken':
+      return 'bg-green-100 text-green-700';
+    case 'missed':
+      return 'bg-red-100 text-red-700';
+    default:
+      return 'bg-gray-100 text-gray-500';
+  }
+}
+
+function statusText(status: MedicationStatus) {
+  switch (status) {
+    case 'taken':
+      return '服薬済み';
+    case 'missed':
+      return '飲み忘れ';
+    default:
+      return '未服薬';
+  }
+}
+
+function cellClass(rate: RateInfo, isSelected: boolean, isToday: boolean) {
+  if (isSelected) return 'bg-green-600 text-white ring-2 ring-green-700 ring-offset-2';
+  if (isToday) return 'bg-blue-50 text-blue-700 font-bold ring-1 ring-blue-200';
+  if (!rate) return 'hover:bg-gray-50 text-gray-700';
+  if (rate.taken === rate.total) return 'bg-green-100 text-green-800';
+  if (rate.taken > 0) return 'bg-yellow-100 text-yellow-800';
+  return 'bg-red-100 text-red-800';
+}
+
+function barClass(rate: RateInfo, isSelected: boolean) {
+  if (!rate) return '';
+  if (isSelected) return 'bg-white/70';
+  if (rate.taken === rate.total) return 'bg-green-500';
+  if (rate.taken > 0) return 'bg-yellow-400';
+  return 'bg-red-400';
+}
+
 export default function CalendarScreen() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [selected, setSelected] = useState<string | null>(null);
+  const [monthRecords, setMonthRecords] = useState<DailyRecord[]>([]);
+  const [selectedRecord, setSelectedRecord] = useState<DailyRecord | null>(null);
 
   const settings = loadSettings();
   const enabledCount = settings.medications.filter(m => m.enabled).length;
-  const monthRecords = loadMonthRecords(year, month);
-  const recordMap = new Map(monthRecords.map(r => [r.date, r]));
+
+  useEffect(() => {
+    setMonthRecords(loadMonthRecords(year, month));
+    setSelected(null);
+    setSelectedRecord(null);
+  }, [year, month]);
+
+  useEffect(() => {
+    if (selected) setSelectedRecord(loadDailyRecord(selected));
+  }, [selected]);
 
   const days = daysInMonth(year, month);
   const firstDay = firstDayOfMonth(year, month);
@@ -42,14 +91,37 @@ export default function CalendarScreen() {
     if (month === 0) { setYear(y => y - 1); setMonth(11); }
     else setMonth(m => m - 1);
     setSelected(null);
+    setSelectedRecord(null);
   }
   function nextMonth() {
     if (month === 11) { setYear(y => y + 1); setMonth(0); }
     else setMonth(m => m + 1);
     setSelected(null);
+    setSelectedRecord(null);
   }
 
-  const selectedRecord = selected ? loadDailyRecord(selected) : null;
+  function toggleStatus(med: MedicationTime) {
+    if (!selectedRecord) return;
+    const current = selectedRecord.records.find(r => r.medicationId === med.id);
+    const order: MedicationStatus[] = ['taken', 'missed', 'pending'];
+    const nextStatus = current ? order[(order.indexOf(current.status) + 1) % order.length] : 'taken';
+
+    const newRecords = selectedRecord.records.filter(r => r.medicationId !== med.id);
+    if (nextStatus !== 'pending') {
+      newRecords.push({
+        medicationId: med.id,
+        status: nextStatus,
+        takenAt: new Date().toISOString(),
+      });
+    }
+
+    const newRecord: DailyRecord = { ...selectedRecord, records: newRecords };
+    setSelectedRecord(newRecord);
+    saveDailyRecord(newRecord);
+    setMonthRecords(loadMonthRecords(year, month));
+  }
+
+  const recordMap = new Map(monthRecords.map(r => [r.date, r]));
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -82,34 +154,22 @@ export default function CalendarScreen() {
             const rate = rec ? getRate(rec, enabledCount) : null;
             const isToday = ds === todayStr;
             const isSelected = ds === selected;
-
-            let dotColor = '';
-            if (rate) {
-              if (rate.taken === rate.total) dotColor = 'bg-green-500';
-              else if (rate.taken > 0) dotColor = 'bg-yellow-400';
-              else dotColor = 'bg-red-400';
-            }
+            const baseClass = cellClass(rate, isSelected, isToday);
 
             return (
               <button
                 key={ds}
                 onClick={() => setSelected(ds === selected ? null : ds)}
-                className={`flex flex-col items-center py-1.5 rounded-xl transition-colors ${
-                  isSelected
-                    ? 'bg-green-500 text-white'
-                    : isToday
-                    ? 'bg-green-50 text-green-700 font-bold'
-                    : 'hover:bg-gray-50'
-                }`}
+                className={`flex flex-col items-center py-1.5 rounded-xl transition-colors ${baseClass}`}
               >
                 <span className="text-sm">{day}</span>
                 {rate && (
-                  <span className={`text-xs ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
-                    {rate.taken}/{rate.total}
-                  </span>
-                )}
-                {dotColor && !rate && (
-                  <span className={`w-1.5 h-1.5 rounded-full mt-0.5 ${dotColor}`} />
+                  <>
+                    <span className={`text-xs ${isSelected ? 'text-white/90' : 'opacity-70'}`}>
+                      {rate.taken}/{rate.total}
+                    </span>
+                    <span className={`w-6 h-1.5 rounded-full mt-0.5 ${barClass(rate, isSelected)}`} />
+                  </>
                 )}
               </button>
             );
@@ -119,9 +179,10 @@ export default function CalendarScreen() {
 
       {selected && selectedRecord && (
         <div className="card">
-          <p className="font-semibold text-gray-700 mb-3">
+          <p className="font-semibold text-gray-700 mb-1">
             {selected.replace(/-/g, '/')} の記録
           </p>
+          <p className="text-xs text-gray-400 mb-3">※ タップで状態を切り替え</p>
           {settings.medications.filter(m => m.enabled).map(med => {
             const entry = selectedRecord.records.find(r => r.medicationId === med.id);
             const status = entry?.status ?? 'pending';
@@ -137,23 +198,28 @@ export default function CalendarScreen() {
                 <span className="flex-1 text-sm">
                   {med.label} ({med.time})
                 </span>
-                <span className={`text-xs font-medium ${
-                  status === 'taken' ? 'text-green-600'
-                  : status === 'missed' ? 'text-red-500'
-                  : 'text-gray-400'
-                }`}>
-                  {status === 'taken' ? '服薬済み' : status === 'missed' ? '飲み忘れ' : '未服薬'}
-                </span>
+                <button
+                  onClick={() => toggleStatus(med)}
+                  className={`text-xs font-medium px-2 py-1 rounded-full transition-colors ${statusBadgeClass(status)}`}
+                >
+                  {statusText(status)}
+                </button>
               </div>
             );
           })}
         </div>
       )}
 
-      <div className="flex items-center gap-4 text-xs text-gray-500 px-1">
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" />全完了</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />一部完了</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" />未服薬</span>
+      <div className="flex flex-wrap gap-2 px-1">
+        <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs">
+          <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />全完了
+        </span>
+        <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs">
+          <span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />一部完了
+        </span>
+        <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-red-100 text-red-700 text-xs">
+          <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />未完了
+        </span>
       </div>
     </div>
   );
